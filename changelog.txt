@@ -3,3 +3,8 @@ Version: 0.2.0
 Date: 08 August 2025
   Features:
     - Added multiplier for technologies.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.0
+Date: 08 August 2025
+  Features:
+    -Added energy-multiplier: scales machine energy consumption, idle drain, and pollution emissions.
