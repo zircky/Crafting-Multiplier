@@ -4,7 +4,7 @@ local MAX_AMOUNT = 65535
 -- Получаем значения множителей из настроек мода (целые числа из startup)
 local crafting_multiplier = settings.startup["crafting-multiplier"].value or 1
 local result_multiplier = settings.startup["result-multiplier"].value or 1
-local science_multiplier = settings.startup["science-multiplier"].value or 1
+
 local energy_multiplier = settings.startup["energy-multiplier"].value or 1
 
 -- Проверка типов
@@ -16,10 +16,6 @@ if type(result_multiplier) ~= "number" then
   log("Error: result-multiplier is not a number: " .. tostring(result_multiplier))
   result_multiplier = 1
 end
-if type(science_multiplier) ~= "number" then
-  log("Error: science-multiplier is not a number: " .. tostring(science_multiplier))
-  science_multiplier = 1
-end
 if type(energy_multiplier) ~= "number" then
   log("Error: energy-multiplier is not a number: " .. tostring(energy_multiplier))
   energy_multiplier = 1
@@ -29,13 +25,12 @@ end
 -- Убедимся, что множители не меньше 1
 crafting_multiplier = math.max(1, crafting_multiplier)
 result_multiplier = math.max(1, result_multiplier)
-science_multiplier = math.max(1, science_multiplier)
+
 energy_multiplier = math.max(0.01, energy_multiplier) -- время крафта может быть меньше 1
 
 
 log("Applying crafting multiplier: " .. crafting_multiplier)
 log("Applying result multiplier: " .. result_multiplier)
-log("Applying science multiplier: " .. science_multiplier)
 log("Applying energy multiplier: " .. energy_multiplier)
 
 -- Масштабирование ингредиентов
@@ -123,13 +118,6 @@ for _, recipe in pairs(data.raw.recipe) do
   end
   if recipe.expensive and recipe.expensive.energy_required then
     recipe.expensive.energy_required = recipe.expensive.energy_required * energy_multiplier
-  end
-end
-
--- Масштабирование науки
-for _, tech in pairs(data.raw.technology) do
-  if tech.unit and type(tech.unit.count) == "number" then
-    tech.unit.count = math.max(1, math.floor(tech.unit.count * science_multiplier))
   end
 end
 
