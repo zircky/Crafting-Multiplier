@@ -24,7 +24,7 @@ data:extend({
   {
     type = "int-setting",
     name = "science-multiplier",
-    setting_type = "startup",
+    setting_type = "runtime-global",
     default_value = 1,
     minimum_value = 1,
     maximum_value = 100,
