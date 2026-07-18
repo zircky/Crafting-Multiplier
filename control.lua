@@ -7,12 +7,24 @@ script.on_configuration_changed(function()
 end)
 
 function apply_science_multiplier()
-  local setting_value = settings.global["science-multiplier"].value or 1
+  local custom_multiplier = settings.global["science-multiplier"].value or 1
+  local vanilla_multiplier = game.difficulty_settings.technology_price_multiplier or 1
 
-  if game.difficulty_settings then
-    game.difficulty_settings.technology_price_multiplier = setting_value
-    game.print("Applied science multiplier: " .. setting_value)
-  else
-    log("Warning: game.difficulty_settings not available")
+  local new_multiplier = vanilla_multiplier * custom_multiplier
+
+  if new_multiplier > 1000 then
+      new_multiplier = 1000
+      for _, player in pairs(game.players) do
+        player.print({"", "[color=red][CraftingMultiplier][/color] Warning: Science multiplier capped at 1000 (Factorio limit)."})
+      end
   end
+
+  game.difficulty_settings.technology_price_multiplier = new_multiplier
+
+  for _, player in pairs(game.players) do
+      player.print({"", "[color=green][CraftingMultiplier][/color] Vanilla multiplier: ",
+        vanilla_multiplier, " | Custom multiplier: ",
+        custom_multiplier, " | Final applied multiplier: ",
+        new_multiplier})
+    end
 end

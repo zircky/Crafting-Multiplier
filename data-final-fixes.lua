@@ -1,13 +1,12 @@
--- Максимальное количество для ингредиентов/результатов/пакетов (uint16)
+-- Maximum quantity for ingredients/results/bags (uint16)
 local MAX_AMOUNT = 65535
 
--- Получаем значения множителей из настроек мода (целые числа из startup)
+-- Get the multiplier values from the mod settings (integers from startup)
 local crafting_multiplier = settings.startup["crafting-multiplier"].value or 1
 local result_multiplier = settings.startup["result-multiplier"].value or 1
-
 local energy_multiplier = settings.startup["energy-multiplier"].value or 1
 
--- Проверка типов
+-- Type checking
 if type(crafting_multiplier) ~= "number" then
   log("Error: crafting-multiplier is not a number: " .. tostring(crafting_multiplier))
   crafting_multiplier = 1
@@ -21,43 +20,99 @@ if type(energy_multiplier) ~= "number" then
   energy_multiplier = 1
 end
 
-
--- Убедимся, что множители не меньше 1
+-- Let's make sure that the multipliers are not less than 1
 crafting_multiplier = math.max(1, crafting_multiplier)
 result_multiplier = math.max(1, result_multiplier)
-
-energy_multiplier = math.max(0.01, energy_multiplier) -- время крафта может быть меньше 1
-
+energy_multiplier = math.max(0.01, energy_multiplier)
 
 log("Applying crafting multiplier: " .. crafting_multiplier)
 log("Applying result multiplier: " .. result_multiplier)
 log("Applying energy multiplier: " .. energy_multiplier)
 
--- Масштабирование ингредиентов
+
+----------------------------------------------------------------
+-- 🔵 Stack size lookup
+----------------------------------------------------------------
+local function get_stack_size(item_name)
+  if not item_name then return nil end
+
+  return (data.raw.item[item_name]
+    or (data.raw["ammo"] and data.raw["ammo"][item_name])
+    or (data.raw["tool"] and data.raw["tool"][item_name])
+    or (data.raw["module"] and data.raw["module"][item_name])
+    or (data.raw["capsule"] and data.raw["capsule"][item_name])
+    or (data.raw["armor"] and data.raw["armor"][item_name])
+    or (data.raw["gun"] and data.raw["gun"][item_name])
+    or (data.raw["repair-tool"] and data.raw["repair-tool"][item_name])
+    or nil)
+end
+
+----------------------------------------------------------------
+-- 🔵 Variant A: Round amount up to full stacks
+----------------------------------------------------------------
+local function apply_stack_logic(item_name, amount)
+  local proto = get_stack_size(item_name)
+  if not proto or not proto.stack_size then
+    return amount
+  end
+
+  local stack = proto.stack_size
+
+  -- If fits in 1 stack → leave as is
+  if amount <= stack then
+    return amount
+  end
+
+  local stacks_needed = math.ceil(amount / stack)
+  return stacks_needed * stack
+end
+
+
+----------------------------------------------------------------
+-- Ingredient scaling (with stack logic)
+----------------------------------------------------------------
 local function scale_ingredients(ingredients, multiplier)
   for _, ing in pairs(ingredients or {}) do
-    if type(ing) == "table" then
-      if ing.name and ing.amount then
-        ing.amount = math.max(1, math.min(MAX_AMOUNT, math.floor(ing.amount * multiplier)))
-      elseif type(ing[1]) == "string" and type(ing[2]) == "number" then
-        ing[2] = math.max(1, math.min(MAX_AMOUNT, math.floor(ing[2] * multiplier)))
-      end
+
+    -- long format { name="", amount=N }
+    if ing.name and ing.amount then
+      local raw = ing.amount * multiplier
+      local rounded = apply_stack_logic(ing.name, raw)
+      ing.amount = math.max(1, math.min(MAX_AMOUNT, rounded))
+
+    -- short format { "item", N }
+    elseif type(ing[1]) == "string" and type(ing[2]) == "number" then
+      local name = ing[1]
+      local raw = ing[2] * multiplier
+      local rounded = apply_stack_logic(name, raw)
+      ing[2] = math.max(1, math.min(MAX_AMOUNT, rounded))
+
     end
   end
 end
 
--- Масштабирование результатов
+
+----------------------------------------------------------------
+-- Scaling results
+----------------------------------------------------------------
 local function scale_results(results, multiplier)
   for _, res in pairs(results or {}) do
-    if res.amount and type(res.amount) == "number" then
+
+    -- long format
+    if res.name and res.amount then
       res.amount = math.max(1, math.min(MAX_AMOUNT, math.floor(res.amount * multiplier)))
+
+    -- short format
     elseif type(res[1]) == "string" and type(res[2]) == "number" then
       res[2] = math.max(1, math.min(MAX_AMOUNT, math.floor(res[2] * multiplier)))
     end
   end
 end
 
--- Масштабирование result_count
+
+----------------------------------------------------------------
+-- Scaling result_count
+----------------------------------------------------------------
 local function scale_result_count(recipe, multiplier)
   recipe.result_count = recipe.result_count or 1
   if type(recipe.result_count) == "number" and recipe.result_count > 0 then
@@ -65,7 +120,10 @@ local function scale_result_count(recipe, multiplier)
   end
 end
 
--- Масштабирование строковых значений энергии (например "180kW", "2MW", "500W")
+
+----------------------------------------------------------------
+-- Scaling of string energy values
+----------------------------------------------------------------
 local function scale_energy_string(value, multiplier)
   if type(value) ~= "string" then return value end
   local number, unit = string.match(value, "([%d%.]+)%s*(%a+)")
@@ -76,7 +134,10 @@ local function scale_energy_string(value, multiplier)
   return value
 end
 
--- Обработка рецептов
+
+----------------------------------------------------------------
+-- 🔥 Recipe Processing
+----------------------------------------------------------------
 for _, recipe in pairs(data.raw.recipe) do
   if recipe.ingredients then
     scale_ingredients(recipe.ingredients, crafting_multiplier)
@@ -109,7 +170,7 @@ for _, recipe in pairs(data.raw.recipe) do
     end
   end
 
-  -- Масштабируем энергию крафта (energy_required)
+  -- Scaling Crafting Energy (energy_required)
   if recipe.energy_required then
     recipe.energy_required = recipe.energy_required * energy_multiplier
   end
@@ -121,15 +182,21 @@ for _, recipe in pairs(data.raw.recipe) do
   end
 end
 
--- Масштабирование энергопотребления машин
+
+----------------------------------------------------------------
+-- 🔥 Scaling the power consumption of machines
+----------------------------------------------------------------
 for _, prototype_type in pairs(data.raw) do
   for _, entity in pairs(prototype_type) do
+
     if entity.energy_usage then
       entity.energy_usage = scale_energy_string(entity.energy_usage, energy_multiplier)
     end
+
     if entity.drain then
       entity.drain = scale_energy_string(entity.drain, energy_multiplier)
     end
+
     if entity.energy_source and entity.energy_source.emissions_per_minute then
       if type(entity.energy_source.emissions_per_minute) == "number" then
         entity.energy_source.emissions_per_minute =
@@ -142,5 +209,6 @@ for _, prototype_type in pairs(data.raw) do
         end
       end
     end
+
   end
 end
