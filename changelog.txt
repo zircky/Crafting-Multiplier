@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.2.4
+Date: 18 July 2026
+  Bugfixes:
+    - Apply the science multiplier to modded technologies that opt out of the global cost multiplier.
+    - Prevent repeated multiplication after configuration changes.
+    - Apply runtime changes to the science multiplier immediately.
+---------------------------------------------------------------------------------------------------
 Version: 0.2.0
 Date: 08 August 2025
   Features:

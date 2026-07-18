@@ -212,3 +212,15 @@ for _, prototype_type in pairs(data.raw) do
 
   end
 end
+
+----------------------------------------------------------------
+-- Technology cost scaling
+----------------------------------------------------------------
+-- Some mods explicitly opt out of Factorio's technology price multiplier.
+-- Clear that flag after their prototypes are created so the runtime multiplier
+-- applies to every science-based technology, including infinite technologies.
+for _, technology in pairs(data.raw.technology or {}) do
+  if technology.unit then
+    technology.ignore_tech_cost_multiplier = false
+  end
+end
