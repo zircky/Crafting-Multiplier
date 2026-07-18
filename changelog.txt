@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.2.5
+Date: 18 July 2026
+  Bugfixes:
+    - Add load-order and runtime compatibility with Exotic Space Industries: Remembrance.
+    - Apply the custom science multiplier on top of Remembrance's dynamic Age-ramp multiplier.
+---------------------------------------------------------------------------------------------------
 Version: 0.2.4
 Date: 18 July 2026
   Bugfixes:
